@@ -1,0 +1,1035 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Рацион — планировщик питания</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Unbounded:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FFF8F2; --surface:#FFFFFF; --surface-2:#FBEFE6; --text:#2A2130; --muted:#7A6E78; --border:#F0E2D6;
+  --primary:#E4572E; --primary-600:#C9461F; --primary-50:#FDE8DF; --on-primary:#FFFFFF;
+  --green:#2E8B57; --green-50:#E3F3EA; --danger:#D64545;
+  --prot:#5B6CF0; --fat:#E89A2C; --carb:#1F9E99; --water:#3A9BDC;
+  --shadow:0 1px 2px rgba(42,33,48,.04),0 8px 24px rgba(228,87,46,.07);
+  --r:20px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#17131A; --surface:#211B25; --surface-2:#2B2430; --text:#F3ECF1; --muted:#A79BA6; --border:#362E3B;
+    --primary:#FF7A50; --primary-600:#FF946F; --primary-50:#3A2420; --on-primary:#1A0F0B;
+    --green:#5CC98D; --green-50:#1E3328; --danger:#F07070;
+    --prot:#8C99FF; --fat:#F7BD68; --carb:#4CC7C1; --water:#6CB8EE;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#17131A; --surface:#211B25; --surface-2:#2B2430; --text:#F3ECF1; --muted:#A79BA6; --border:#362E3B;
+  --primary:#FF7A50; --primary-600:#FF946F; --primary-50:#3A2420; --on-primary:#1A0F0B;
+  --green:#5CC98D; --green-50:#1E3328; --danger:#F07070;
+  --prot:#8C99FF; --fat:#F7BD68; --carb:#4CC7C1; --water:#6CB8EE;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:Nunito,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2.5px solid var(--primary);outline-offset:2px}
+h1,h2,h3,.display{font-family:Unbounded,Nunito,sans-serif;letter-spacing:-.01em}
+h1{font-size:26px;line-height:1.2;margin:0;font-weight:600}
+h2{font-size:16px;margin:0;font-weight:600}
+h3{font-size:14px;margin:0;font-weight:600}
+.muted{color:var(--muted)} .small{font-size:13px} .num{font-variant-numeric:tabular-nums}
+.eyebrow{font-size:13px;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:.06em}
+
+/* Каркас */
+.app{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:100vh}
+.sidebar{position:sticky;top:0;height:100vh;padding:24px 16px;display:flex;flex-direction:column;gap:28px;background:var(--surface);border-right:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:12px;padding:0 8px}
+.brand-mark{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,var(--primary),#F59E45);display:grid;place-items:center;font-size:22px;box-shadow:0 6px 16px rgba(228,87,46,.3)}
+.brand b{font-family:Unbounded,sans-serif;font-size:19px;font-weight:700;display:block;line-height:1}
+.brand span{font-size:12px;color:var(--muted);font-weight:700}
+.side-nav{display:flex;flex-direction:column;gap:4px}
+.side-nav button{display:flex;align-items:center;gap:12px;border:0;background:transparent;padding:11px 14px;border-radius:14px;font-weight:800;color:var(--muted);text-align:left;font-size:15px}
+.side-nav button:hover{background:var(--surface-2);color:var(--text)}
+.side-nav button[aria-current="page"]{background:var(--primary);color:var(--on-primary);box-shadow:0 6px 16px rgba(228,87,46,.25)}
+.side-foot{margin-top:auto;display:flex;flex-direction:column;gap:12px}
+.mini-goal{background:var(--surface-2);border-radius:16px;padding:14px}
+.mini-goal .row{display:flex;justify-content:space-between;font-size:13px;font-weight:800}
+.topbar{display:none}
+.tabbar{display:none}
+main{padding:28px 32px 64px;max-width:1240px;width:100%}
+
+/* Компоненты */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1.5px solid var(--border);background:var(--surface);padding:9px 15px;border-radius:14px;font-weight:800;white-space:nowrap;font-size:14px}
+.btn:hover{border-color:var(--primary);color:var(--primary)}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+.btn.primary:hover{background:var(--primary-600);border-color:var(--primary-600);color:var(--on-primary)}
+.btn.soft{background:var(--primary-50);border-color:transparent;color:var(--primary)}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.danger:hover{color:var(--danger);border-color:var(--danger)}
+.btn.sm{padding:6px 11px;font-size:13px;border-radius:11px}
+.btn:disabled{opacity:.5;pointer-events:none}
+.icon-btn{width:40px;height:40px;border-radius:13px;border:1.5px solid var(--border);background:var(--surface);display:grid;place-items:center;flex:none;padding:0}
+.icon-btn:hover{border-color:var(--primary);color:var(--primary)}
+.x-btn{border:0;background:transparent;color:var(--muted);width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex:none;padding:0}
+.x-btn:hover{background:var(--surface-2);color:var(--danger)}
+.pills{display:flex;gap:8px;flex-wrap:wrap}
+.pill{border:1.5px solid var(--border);background:var(--surface);padding:6px 13px;border-radius:999px;font-weight:800;font-size:13px;color:var(--muted)}
+.pill:hover{color:var(--text)}
+.pill[aria-pressed="true"]{background:var(--text);border-color:var(--text);color:var(--bg)}
+.field{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:800;color:var(--muted)}
+.input{width:100%;border:1.5px solid var(--border);background:var(--surface);border-radius:13px;padding:10px 12px;color:var(--text);font-weight:600}
+.input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 4px var(--primary-50)}
+textarea.input{resize:vertical;min-height:70px}
+.search{position:relative}
+.search svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.search .input{padding-left:40px}
+.mac{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:800;color:var(--muted)}
+.mac i{width:8px;height:8px;border-radius:3px;display:inline-block}
+.bg-p{background:var(--prot)} .bg-f{background:var(--fat)} .bg-c{background:var(--carb)}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.datenav{display:flex;align-items:center;gap:10px;margin-top:6px}
+.empty{text-align:center;color:var(--muted);padding:28px 16px;font-weight:600}
+.empty .em{display:block;font-size:38px;margin-bottom:6px}
+.seg{display:flex;background:var(--surface-2);border-radius:14px;padding:4px;gap:4px}
+.seg button{flex:1;border:0;background:transparent;padding:8px 10px;border-radius:11px;font-weight:800;color:var(--muted);font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+
+/* Сегодня */
+.strip{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:18px}
+.sday{border:1.5px solid var(--border);background:var(--surface);border-radius:16px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:1px}
+.sday:hover{border-color:var(--primary)}
+.sday small{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase}
+.sday b{font-family:Unbounded,sans-serif;font-size:17px;font-weight:600}
+.sday .pip{width:6px;height:6px;border-radius:50%;background:var(--border);margin-top:3px}
+.sday .pip.ok{background:var(--green)} .sday .pip.part{background:var(--fat)} .sday .pip.over{background:var(--primary)}
+.sday.is-today b{color:var(--primary)}
+.sday[aria-current="date"]{background:var(--text);border-color:var(--text)}
+.sday[aria-current="date"] small,.sday[aria-current="date"] b{color:var(--bg)}
+.next{display:flex;align-items:center;gap:14px;padding:14px 18px;margin-bottom:18px;background:linear-gradient(120deg,var(--primary-50),var(--surface));border-color:transparent}
+.next .ico{font-size:28px}
+.next b{font-weight:800}
+.today-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;align-items:start}
+.timeline{position:relative;display:flex;flex-direction:column;gap:14px}
+.timeline::before{content:"";position:absolute;left:62px;top:30px;bottom:30px;width:2px;background:var(--border);border-radius:2px}
+.tl{display:grid;grid-template-columns:50px minmax(0,1fr);gap:20px;position:relative}
+.tl-time{font-weight:800;font-size:14px;padding-top:22px;text-align:right;color:var(--muted)}
+.tl::after{content:"";position:absolute;left:56px;top:23px;width:14px;height:14px;border-radius:50%;background:var(--surface);border:3px solid var(--border);box-sizing:border-box}
+.tl.done::after{background:var(--green);border-color:var(--green)}
+.tl.is-next::after{background:var(--primary);border-color:var(--primary);box-shadow:0 0 0 5px var(--primary-50)}
+.tl.is-next .tl-time{color:var(--primary)}
+.meal{padding:16px}
+.meal-h{display:flex;align-items:center;gap:12px}
+.meal-ico{width:44px;height:44px;border-radius:14px;background:var(--surface-2);display:grid;place-items:center;font-size:22px;flex:none}
+.meal-h .t{flex:1;min-width:0}
+.meal-h .sub{font-size:13px;font-weight:700;color:var(--muted)}
+.items{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:14px;background:var(--surface-2)}
+.item.done .it-name{text-decoration:line-through;text-decoration-color:var(--muted);color:var(--muted)}
+.tick{width:28px;height:28px;border-radius:9px;border:2px solid var(--border);background:var(--surface);display:grid;place-items:center;color:transparent;flex:none;padding:0}
+.tick:hover{border-color:var(--green)}
+.item.done .tick{background:var(--green);border-color:var(--green);color:#fff}
+.it-emo{font-size:24px;flex:none;cursor:pointer;background:none;border:0;padding:0}
+.it-body{flex:1;min-width:0}
+.it-name{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.it-meta{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);font-weight:700}
+.it-kcal{font-weight:800;white-space:nowrap;min-width:64px;text-align:right}
+.it-kcal small{color:var(--muted)}
+.step{display:flex;align-items:center;border:1.5px solid var(--border);border-radius:11px;background:var(--surface);flex:none}
+.step button{border:0;background:transparent;width:26px;height:28px;font-weight:800;color:var(--muted);padding:0}
+.step button:hover{color:var(--primary)}
+.step span{min-width:30px;text-align:center;font-size:13px;font-weight:800}
+.meal-empty{margin-top:12px;border:2px dashed var(--border);border-radius:14px;padding:12px;text-align:center;font-size:13px;font-weight:700;color:var(--muted);background:transparent;width:100%}
+.meal-empty:hover{border-color:var(--primary);color:var(--primary)}
+.aside{display:flex;flex-direction:column;gap:14px;position:sticky;top:24px}
+.sum{padding:20px}
+.ring-row{display:flex;align-items:center;gap:18px}
+.ring{position:relative;width:130px;height:130px;flex:none}
+.ring svg{transform:rotate(-90deg);display:block}
+.ring .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring .c b{font-family:Unbounded,sans-serif;font-size:24px;font-weight:600;line-height:1}
+.ring .c span{font-size:12px;color:var(--muted);font-weight:700;margin-top:3px}
+.status{font-weight:800;font-size:15px}
+.status.over{color:var(--primary)}
+.bars{display:flex;flex-direction:column;gap:12px;margin-top:18px}
+.bar .lbl{display:flex;justify-content:space-between;font-size:13px;font-weight:800;margin-bottom:5px}
+.track{height:9px;border-radius:9px;background:var(--surface-2);overflow:hidden}
+.track span{display:block;height:100%;border-radius:9px;transition:width .35s}
+.eaten{display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding:10px 12px;border-radius:12px;background:var(--green-50);color:var(--green);font-weight:800;font-size:13px}
+.box{padding:16px 20px}
+.box-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.cups{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.cup{width:30px;height:38px;border:2px solid var(--border);border-radius:6px 6px 11px 11px;background:var(--surface);position:relative;overflow:hidden;padding:0}
+.cup::after{content:"";position:absolute;left:0;right:0;bottom:0;height:0;background:var(--water);transition:height .25s}
+.cup.on{border-color:var(--water)}
+.cup.on::after{height:75%}
+.moods{display:flex;justify-content:space-between;margin:12px 0 10px}
+.mood{font-size:26px;width:46px;height:46px;border-radius:14px;border:2px solid transparent;background:var(--surface-2);padding:0;filter:grayscale(.7);opacity:.7;transition:.15s}
+.mood:hover{filter:none;opacity:1}
+.mood[aria-pressed="true"]{filter:none;opacity:1;border-color:var(--primary);background:var(--primary-50);transform:scale(1.06)}
+
+/* Неделя */
+.table-wrap{overflow-x:auto;border-radius:var(--r);border:1px solid var(--border);background:var(--surface);box-shadow:var(--shadow)}
+.plan{border-collapse:separate;border-spacing:0;width:100%;min-width:900px}
+.plan th,.plan td{border-bottom:1px solid var(--border);border-right:1px solid var(--border);padding:8px;vertical-align:top;text-align:left}
+.plan tr>*:last-child{border-right:0}
+.plan tfoot td,.plan tfoot th{border-bottom:0}
+.plan thead th{background:var(--surface);position:sticky;top:0}
+.plan .rowh{position:sticky;left:0;background:var(--surface);z-index:1;width:120px;min-width:120px}
+.rowh b{display:block;font-size:13px;font-weight:800}
+.rowh span{font-size:12px;color:var(--muted);font-weight:700}
+.dayh{border:0;background:transparent;padding:6px;border-radius:12px;width:100%;text-align:left}
+.dayh:hover{background:var(--surface-2)}
+.dayh small{display:block;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase}
+.dayh b{font-family:Unbounded,sans-serif;font-size:15px;font-weight:600}
+.dayh.is-today b,.dayh.is-today small{color:var(--primary)}
+.cell{min-width:118px;height:92px;transition:background .15s}
+.cell.drop{background:var(--primary-50);box-shadow:inset 0 0 0 2px var(--primary)}
+.dchip{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:10px;background:var(--surface-2);font-size:12.5px;font-weight:800;margin-bottom:4px;cursor:grab;user-select:none}
+.dchip:active{cursor:grabbing}
+.dchip.dragging{opacity:.4}
+.dchip .n{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dchip .k{color:var(--muted);font-size:11px}
+.cell-add{border:1.5px dashed var(--border);background:transparent;border-radius:10px;width:100%;padding:4px;color:var(--muted);font-weight:800;font-size:13px}
+.cell-add:hover{border-color:var(--primary);color:var(--primary)}
+.tot{font-weight:800;font-size:14px}
+.tot small{display:block;font-size:11px;font-weight:700;color:var(--muted)}
+.tot.ok{color:var(--green)} .tot.over{color:var(--primary)} .tot.under{color:var(--fat)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:13px;font-weight:700;color:var(--muted)}
+
+/* Рецепты */
+.filters{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+.filters .search{flex:1;min-width:220px;max-width:360px}
+.rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px}
+.rcard{padding:0;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;transition:transform .15s,box-shadow .15s;text-align:left}
+.rcard:hover{transform:translateY(-3px)}
+.rcover{height:110px;display:grid;place-items:center;font-size:54px;position:relative}
+.fav{position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:12px;border:0;background:var(--surface);display:grid;place-items:center;color:var(--muted);box-shadow:var(--shadow);padding:0}
+.fav[aria-pressed="true"]{color:var(--primary)}
+.fav[aria-pressed="true"] svg{fill:currentColor}
+.rbody{padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1}
+.rname{font-weight:800;font-size:16px;line-height:1.25}
+.rmeta{display:flex;gap:10px;font-size:12px;font-weight:700;color:var(--muted)}
+.rfoot{display:flex;justify-content:space-between;align-items:center;margin-top:auto}
+.rkcal{font-family:Unbounded,sans-serif;font-weight:600;font-size:17px}
+.rkcal small{font-family:Nunito,sans-serif;font-size:12px;color:var(--muted);font-weight:700}
+.tag{display:inline-block;font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
+.c-breakfast{background:#FFF1D6} .c-soup{background:#FFE4DA} .c-main{background:#FCE3E8} .c-salad{background:#E2F4E6} .c-snack{background:#E6EEFF} .c-dessert{background:#F1E6FF}
+:root[data-theme="dark"] .rcover{filter:saturate(.8)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .c-breakfast{background:#3A3020}:root:not([data-theme="light"]) .c-soup{background:#3A2620}:root:not([data-theme="light"]) .c-main{background:#3A2229}:root:not([data-theme="light"]) .c-salad{background:#1F3326}:root:not([data-theme="light"]) .c-snack{background:#232B40}:root:not([data-theme="light"]) .c-dessert{background:#30243F}}
+:root[data-theme="dark"] .c-breakfast{background:#3A3020} :root[data-theme="dark"] .c-soup{background:#3A2620} :root[data-theme="dark"] .c-main{background:#3A2229} :root[data-theme="dark"] .c-salad{background:#1F3326} :root[data-theme="dark"] .c-snack{background:#232B40} :root[data-theme="dark"] .c-dessert{background:#30243F}
+
+/* Покупки */
+.shop-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:22px;align-items:start}
+.dept{padding:8px 8px 10px;margin-bottom:14px}
+.dept-h{display:flex;align-items:center;gap:10px;padding:10px 12px 6px}
+.dept-h .cnt{margin-left:auto;font-size:13px;font-weight:800;color:var(--muted)}
+.prod{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:12px}
+.prod:hover{background:var(--surface-2)}
+.prod input{width:20px;height:20px;accent-color:var(--green);flex:none;margin:0}
+.prod label{flex:1;min-width:0;cursor:pointer}
+.prod .nm{font-weight:800}
+.prod .fr{font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prod .q{font-weight:800;white-space:nowrap}
+.prod.done .nm,.prod.done .q{text-decoration:line-through;color:var(--muted)}
+.big{font-family:Unbounded,sans-serif;font-size:34px;font-weight:600}
+.add-row{display:flex;gap:8px}
+
+/* Профиль */
+.pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:20px;align-items:start}
+.panel{padding:22px;display:flex;flex-direction:column;gap:14px}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.reco{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;background:var(--primary-50);border-radius:16px;padding:14px 16px}
+.reco b{display:block;font-family:Unbounded,sans-serif;font-weight:600;font-size:18px;color:var(--primary)}
+.reco span{font-size:12px;font-weight:700;color:var(--muted)}
+.times{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px}
+
+/* Модальные окна */
+.overlay{position:fixed;inset:0;z-index:60;background:rgba(23,19,26,.5);display:flex;align-items:center;justify-content:center;padding:16px;animation:fade .15s}
+.modal{background:var(--surface);border-radius:24px;width:100%;max-width:580px;max-height:calc(100vh - 32px);display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.3);animation:pop .2s}
+.modal.sm{max-width:420px}
+.m-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px 22px 12px}
+.m-body{padding:4px 22px 18px;overflow:auto;display:flex;flex-direction:column;gap:12px}
+.m-foot{padding:14px 22px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:flex-end;gap:8px}
+.plist{display:flex;flex-direction:column;gap:6px;min-height:220px}
+.pick{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;border:1.5px solid var(--border);background:var(--surface);text-align:left;width:100%}
+.pick:hover{border-color:var(--primary);background:var(--primary-50)}
+.pick .plus{width:32px;height:32px;border-radius:10px;background:var(--primary);color:var(--on-primary);display:grid;place-items:center;flex:none}
+.r-hero{display:flex;gap:16px;align-items:center}
+.r-hero .rcover{width:96px;height:96px;border-radius:22px;flex:none;font-size:50px}
+.kbju{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.kbju div{background:var(--surface-2);border-radius:14px;padding:10px;text-align:center}
+.kbju b{display:block;font-family:Unbounded,sans-serif;font-weight:600;font-size:16px}
+.kbju span{font-size:12px;color:var(--muted);font-weight:700}
+.ing-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.ing-list li{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--border);font-weight:700}
+.steps{margin:0;padding:0;list-style:none;counter-reset:s;display:flex;flex-direction:column;gap:10px}
+.steps li{counter-increment:s;display:flex;gap:12px;align-items:flex-start;font-weight:600}
+.steps li::before{content:counter(s);flex:none;width:26px;height:26px;border-radius:9px;background:var(--primary);color:var(--on-primary);display:grid;place-items:center;font-weight:800;font-size:13px}
+.to-plan{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;background:var(--surface-2);padding:12px;border-radius:16px}
+.ing-row{display:grid;grid-template-columns:minmax(0,1fr) 66px 66px 110px 30px;gap:6px;align-items:center}
+.tpl{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:var(--surface-2)}
+.tpl .t{flex:1;min-width:0}
+.tpl b{display:block}
+@keyframes fade{from{opacity:0}}
+@keyframes pop{from{opacity:0;transform:translateY(10px) scale(.98)}}
+.toast{position:fixed;left:50%;bottom:24px;z-index:70;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:var(--text);color:var(--bg);padding:12px 18px;border-radius:14px;font-weight:800;font-size:14px;transition:.25s;max-width:calc(100vw - 32px)}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* Адаптив */
+@media (max-width:1100px){
+  .today-grid,.shop-grid{grid-template-columns:minmax(0,1fr)}
+  .aside{position:static}
+}
+@media (max-width:860px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .sidebar{display:none}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:30}
+  .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--surface);border-top:1px solid var(--border);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+  .tabbar button{flex:1;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:800;color:var(--muted);padding:6px 2px;border-radius:12px}
+  .tabbar button[aria-current="page"]{color:var(--primary);background:var(--primary-50)}
+  main{padding:18px 16px 100px}
+  h1{font-size:20px}
+  .head .actions.tight{flex-wrap:nowrap}
+  .head .actions .btn{padding:9px 10px;font-size:13px}
+  .strip{gap:4px}
+  .sday b{font-size:15px}
+  .timeline::before{left:46px}
+  .tl{grid-template-columns:38px minmax(0,1fr);gap:16px}
+  .tl::after{left:40px}
+  .tl-time{font-size:12px}
+  .meal{padding:12px}
+  .item{flex-wrap:wrap}
+  .it-body{flex-basis:calc(100% - 110px)}
+  .item .step{margin-left:38px}
+  .it-kcal{margin-left:auto}
+  .ring{width:110px;height:110px}
+  .ring svg{width:110px;height:110px}
+  .reco{grid-template-columns:repeat(2,1fr)}
+  .to-plan{grid-template-columns:1fr 1fr}
+  .to-plan .btn{grid-column:1/-1}
+  .ing-row{grid-template-columns:minmax(0,1fr) 56px 56px 30px}
+  .ing-row select{grid-column:1/4}
+  .toast{bottom:88px}
+  .kbju b{font-size:14px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-mark" aria-hidden="true">🍅</div><div><b>Рацион</b><span>планировщик питания</span></div></div>
+    <nav class="side-nav" id="sideNav" aria-label="Разделы"></nav>
+    <div class="side-foot">
+      <div class="mini-goal" id="miniGoal"></div>
+      <button class="btn ghost" data-act="theme" id="themeBtnSide"></button>
+    </div>
+  </aside>
+  <div>
+    <header class="topbar">
+      <div class="brand" style="padding:0"><div class="brand-mark" aria-hidden="true" style="width:36px;height:36px;font-size:19px">🍅</div><div><b style="font-size:17px">Рацион</b></div></div>
+      <button class="icon-btn" data-act="theme" id="themeBtnTop" aria-label="Сменить тему"></button>
+    </header>
+    <main id="main"></main>
+  </div>
+</div>
+<nav class="tabbar" id="tabbar" aria-label="Разделы"></nav>
+<div id="modalRoot"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="fileIn" accept=".json,application/json" hidden>
+
+<script>
+/* ===== Иконки ===== */
+const ICONS={
+  left:'<path d="M15 18l-6-6 6-6"/>',right:'<path d="M9 18l6-6-6-6"/>',plus:'<path d="M12 5v14M5 12h14"/>',
+  x:'<path d="M18 6L6 18M6 6l12 12"/>',check:'<path d="M20 6L9 17l-5-5"/>',
+  trash:'<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>',
+  edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  magic:'<path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8l1.4 1.4M17.8 6.2l1.4-1.4M12.2 6.2l-1.4-1.4"/><path d="M15 9l-12 12"/>',
+  layers:'<path d="M12 2l10 6-10 6L2 8z"/><path d="M2 14l10 6 10-6"/>',
+  copy:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+  heart:'<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/>',
+  auto:'<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>',
+  today:'<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 10h18"/><circle cx="12" cy="15" r="2"/>',
+  week:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  book:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>',
+  bag:'<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  down:'<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',up:'<path d="M12 21V9M7 14l5-5 5 5M5 3h14"/>',
+  eye:'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
+};
+const ic=(n,s=18)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
+
+/* ===== Справочники ===== */
+const MEALS=[
+  {id:'breakfast',name:'Завтрак',icon:'🍳',share:.25,cats:['breakfast']},
+  {id:'brunch',name:'Второй завтрак',icon:'🥐',share:.10,cats:['snack','dessert']},
+  {id:'lunch',name:'Обед',icon:'🍲',share:.35,cats:['soup','main','salad']},
+  {id:'snack',name:'Полдник',icon:'🍎',share:.10,cats:['snack','dessert']},
+  {id:'dinner',name:'Ужин',icon:'🌙',share:.20,cats:['main','salad']}
+];
+const CATS={breakfast:'Завтраки',soup:'Супы',main:'Основные',salad:'Салаты',snack:'Перекусы',dessert:'Десерты'};
+const DEPTS={v:['Овощи и фрукты','🥦'],m:['Мясо и рыба','🥩'],d:['Молочное и яйца','🥚'],g:['Бакалея','🌾'],o:['Прочее','🧂']};
+const VIEWS=[{id:'today',name:'Сегодня',icon:'today'},{id:'week',name:'Неделя',icon:'week'},{id:'recipes',name:'Рецепты',icon:'book'},{id:'shop',name:'Покупки',icon:'bag'},{id:'profile',name:'Профиль',icon:'user'}];
+const ACTIVITY=[[1.2,'Минимальная, сидячая работа'],[1.375,'Лёгкая, 1–3 тренировки в неделю'],[1.55,'Средняя, 3–5 тренировок'],[1.725,'Высокая, 6–7 тренировок'],[1.9,'Очень высокая, физический труд']];
+const MOODS=['😩','😕','😐','🙂','🤩'];
+const MOOD_TXT=['Тяжело','Так себе','Нормально','Хорошо','Отлично'];
+
+// [название, эмодзи, категория, мин, ккал, Б, Ж, У, порция, ингредиенты "имя:кол-во:ед:отдел", шаги через |]
+const SEED=[
+ ['Овсянка с яблоком и корицей','🥣','breakfast',10,330,10,7,58,'300 г','Овсяные хлопья:60:г:g;Молоко:200:мл:d;Яблоки:1:шт:v;Корица:1:щеп:o','Залейте хлопья молоком и варите 5 минут на среднем огне.|Добавьте нарезанное кубиками яблоко и корицу.|Накройте крышкой и дайте постоять 2 минуты.'],
+ ['Сырники с ягодами','🥞','breakfast',25,410,26,16,40,'200 г','Творог:200:г:d;Яйца:1:шт:d;Мука рисовая:30:г:g;Ягоды:50:г:v','Смешайте творог, яйцо и муку до однородности.|Сформируйте 5–6 сырников и обжарьте по 3 минуты с каждой стороны.|Подавайте с ягодами.'],
+ ['Омлет со шпинатом и сыром','🍳','breakfast',10,340,24,24,5,'220 г','Яйца:3:шт:d;Шпинат:40:г:v;Сыр:20:г:d;Молоко:40:мл:d','Взбейте яйца с молоком и щепоткой соли.|Прогрейте шпинат на сковороде 1 минуту и залейте яйцами.|Посыпьте сыром и готовьте под крышкой 4 минуты.'],
+ ['Тост с авокадо и яйцом пашот','🥑','breakfast',15,370,15,21,30,'200 г','Хлеб цельнозерновой:2:ломт:g;Авокадо:0.5:шт:v;Яйца:1:шт:d;Лимон:0.25:шт:v','Подсушите хлеб в тостере или на сухой сковороде.|Разомните авокадо с соком лимона и намажьте на хлеб.|Сварите яйцо пашот 3 минуты и выложите сверху.'],
+ ['Гречневая каша с молоком','🌾','breakfast',20,290,11,7,45,'300 г','Гречка:60:г:g;Молоко:200:мл:d','Промойте гречку и варите в воде 15 минут.|Переложите в тарелку и залейте тёплым молоком.'],
+ ['Боул с йогуртом и гранолой','🍓','breakfast',5,320,18,10,40,'250 г','Греческий йогурт:180:г:d;Гранола:40:г:g;Ягоды:50:г:v','Выложите йогурт в миску.|Посыпьте гранолой и ягодами.'],
+ ['Чечевичный суп','🍲','soup',35,290,17,6,42,'350 мл','Чечевица красная:70:г:g;Морковь:1:шт:v;Лук:0.5:шт:v;Томаты в собственном соку:100:г:g','Обжарьте лук и морковь 5 минут.|Добавьте чечевицу, томаты и 600 мл воды, варите 20 минут.|Пробейте блендером, посолите и поперчите.'],
+ ['Сорпа с говядиной','🥘','soup',90,320,26,16,14,'400 мл','Говядина:150:г:m;Картофель:1:шт:v;Лук:1:шт:v;Зелень:1:пуч:v','Залейте мясо холодной водой, доведите до кипения и снимите пену.|Варите на слабом огне 1 час, добавьте целую луковицу.|За 20 минут до готовности положите картофель, подавайте с зеленью.'],
+ ['Куриный суп с лапшой','🍜','soup',40,280,22,8,28,'400 мл','Куриное филе:120:г:m;Лапша:40:г:g;Морковь:1:шт:v;Картофель:1:шт:v','Варите курицу 20 минут, выньте и разберите на волокна.|Добавьте в бульон картофель и морковь, варите 10 минут.|Положите лапшу и курицу, варите ещё 5 минут.'],
+ ['Борщ','🫕','soup',60,310,14,13,32,'400 мл','Говядина:100:г:m;Свёкла:1:шт:v;Капуста:150:г:v;Картофель:1:шт:v;Сметана:20:г:d','Сварите бульон из говядины (40 минут).|Добавьте картофель и капусту, затем тушёную свёклу.|Варите 15 минут и подавайте со сметаной.'],
+ ['Плов с говядиной','🍛','main',70,610,27,24,70,'350 г','Рис:90:г:g;Говядина:130:г:m;Морковь:1:шт:v;Лук:1:шт:v;Масло растительное:15:мл:g','Обжарьте мясо в казане, добавьте лук и морковь соломкой.|Залейте водой и тушите 20 минут — это зирвак.|Выложите промытый рис, залейте водой на 1 см выше и готовьте под крышкой 25 минут.'],
+ ['Лагман','🍝','main',50,560,26,18,72,'400 г','Лапша:100:г:g;Говядина:110:г:m;Перец болгарский:1:шт:v;Томаты:1:шт:v','Обжарьте мясо соломкой до румяности.|Добавьте перец и томаты, тушите 15 минут с небольшим количеством воды.|Отварите лапшу и залейте её подливой.'],
+ ['Курица терияки с рисом','🍗','main',30,520,38,12,62,'350 г','Куриное филе:150:г:m;Рис:70:г:g;Соус терияки:30:мл:g;Брокколи:100:г:v','Отварите рис.|Обжарьте кусочки курицы 6 минут, добавьте соус и уварите.|Подавайте с рисом и брокколи на пару.'],
+ ['Лосось с киноа и цукини','🐟','main',25,490,35,22,36,'330 г','Лосось:140:г:m;Киноа:50:г:g;Цукини:1:шт:v;Лимон:0.5:шт:v','Отварите киноа 15 минут.|Запеките лосось с ломтиками цукини 15 минут при 200 °C.|Сбрызните лимонным соком.'],
+ ['Манты с тыквой','🥟','main',60,480,22,18,56,'4 шт','Мука:100:г:g;Говядина:100:г:m;Тыква:100:г:v;Лук:1:шт:v','Замесите тесто из муки, воды и соли.|Нарежьте мясо, тыкву и лук мелким кубиком.|Слепите манты и готовьте в мантоварке 40 минут.'],
+ ['Котлеты из индейки с пюре','🥔','main',40,500,34,18,46,'350 г','Фарш индейки:150:г:m;Картофель:3:шт:v;Молоко:50:мл:d','Сформируйте котлеты и запеките 20 минут при 190 °C.|Отварите картофель и разомните с тёплым молоком.'],
+ ['Паста с томатами и моцареллой','🍅','main',20,520,20,16,72,'320 г','Паста:90:г:g;Томаты черри:150:г:v;Моцарелла:50:г:d;Базилик:1:пуч:v','Отварите пасту до состояния аль денте.|Прогрейте половинки черри на сковороде 3 минуты.|Смешайте с пастой, моцареллой и базиликом.'],
+ ['Тёплый салат с говядиной','🥗','salad',20,380,30,20,18,'280 г','Говядина:120:г:m;Микс салата:80:г:v;Огурцы:1:шт:v;Томаты черри:100:г:v','Обжарьте тонкие полоски говядины 4 минуты.|Выложите на листья салата с огурцом и черри.|Заправьте оливковым маслом и соевым соусом.'],
+ ['Греческий салат','🫒','salad',10,260,8,20,12,'250 г','Томаты:2:шт:v;Огурцы:1:шт:v;Брынза:60:г:d;Оливки:30:г:g','Нарежьте овощи крупными кусками.|Добавьте брынзу и оливки, заправьте маслом и орегано.'],
+ ['Салат с тунцом и фасолью','🐠','salad',10,340,28,12,28,'260 г','Тунец консервированный:1:банк:g;Фасоль консервированная:120:г:g;Огурцы:1:шт:v','Слейте жидкость с тунца и фасоли.|Смешайте с нарезанным огурцом, заправьте лимонным соком.'],
+ ['Творог с мёдом и орехами','🍯','snack',3,240,22,9,18,'180 г','Творог:150:г:d;Мёд:10:г:g;Грецкие орехи:10:г:g','Выложите творог, полейте мёдом и посыпьте орехами.'],
+ ['Смузи банан-шпинат','🥤','snack',5,210,7,3,40,'300 мл','Бананы:1:шт:v;Шпинат:30:г:v;Кефир:200:мл:d','Сложите всё в блендер и взбейте 1 минуту.'],
+ ['Яблоко с арахисовой пастой','🍎','snack',2,190,5,9,24,'1 порция','Яблоки:1:шт:v;Арахисовая паста:15:г:g','Нарежьте яблоко дольками и подавайте с пастой.'],
+ ['Хумус с овощными палочками','🥕','snack',5,190,7,10,18,'150 г','Хумус:60:г:g;Морковь:1:шт:v;Огурцы:1:шт:v','Нарежьте морковь и огурец брусочками.|Подавайте с хумусом.'],
+ ['Айран','🥛','snack',1,120,6,6,9,'250 мл','Айран:250:мл:d','Подавайте охлаждённым.'],
+ ['Баурсаки с чаем','🫖','dessert',1,260,5,12,32,'3 шт','Баурсаки:3:шт:g;Чай:1:пак:g','Заварите чай и подавайте с баурсаками.'],
+ ['Запечённое яблоко с творогом','🍏','dessert',25,200,12,4,30,'1 шт','Яблоки:1:шт:v;Творог:60:г:d;Мёд:10:г:g','Удалите сердцевину яблока и наполните творогом.|Запекайте 20 минут при 180 °C, полейте мёдом.'],
+ ['Шоколадный пудинг чиа','🍫','dessert',5,230,8,12,22,'150 г','Семена чиа:25:г:g;Молоко:150:мл:d;Какао:10:г:g','Смешайте молоко с какао и чиа.|Уберите в холодильник минимум на 4 часа или на ночь.']
+];
+
+/* ===== Утилиты ===== */
+const uid=()=>Math.random().toString(36).slice(2,10);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const r0=n=>Math.round(n||0);
+const dec=n=>String(Math.round(n*10)/10).replace('.',',');
+const pad=n=>String(n).padStart(2,'0');
+const keyOf=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parse=k=>{const[y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d)};
+const shift=(k,n)=>{const d=parse(k);d.setDate(d.getDate()+n);return keyOf(d)};
+const todayK=()=>keyOf(new Date());
+const monday=k=>{const d=parse(k);d.setDate(d.getDate()-(d.getDay()+6)%7);return keyOf(d)};
+const weekOf=k=>{const m=monday(k);return [0,1,2,3,4,5,6].map(i=>shift(m,i))};
+const df=(k,o)=>new Intl.DateTimeFormat('ru-RU',o).format(parse(k));
+const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+const plural=(n,a,b,c)=>{n=Math.abs(n)%100;const m=n%10;return n>10&&n<20?c:m>1&&m<5?b:m===1?a:c};
+const toMin=t=>{const[h,m]=String(t||'0:0').split(':').map(Number);return h*60+(m||0)};
+const $=s=>document.querySelector(s);
+const $$=s=>[...document.querySelectorAll(s)];
+
+/* ===== Состояние ===== */
+const KEY='racion.v1';
+const DEFAULT_TIMES={breakfast:'08:00',brunch:'11:00',lunch:'13:30',snack:'16:30',dinner:'19:00'};
+function seedRecipes(){
+  return SEED.map(([name,emoji,cat,minutes,kcal,p,f,c,portion,ing,steps])=>({id:uid(),name,emoji,cat,minutes,kcal,p,f,c,portion,fav:false,
+    ingredients:ing.split(';').map(s=>{const[n,q,u,d]=s.split(':');return{name:n,qty:+q,unit:u,dept:d}}),steps:steps.split('|')}));
+}
+function fresh(){
+  return{settings:{goals:{kcal:1900,p:105,f:62,c:225,water:8},profile:{sex:'f',age:30,height:164,weight:60,activity:1.375,goal:'keep'},times:{...DEFAULT_TIMES},theme:'auto'},
+    recipes:seedRecipes(),days:{},templates:[],shopping:{}};
+}
+function normalize(s){
+  const d=fresh();
+  s.settings=Object.assign(d.settings,s.settings||{});
+  s.settings.times=Object.assign({...DEFAULT_TIMES},s.settings.times||{});
+  s.templates=s.templates||[];s.shopping=s.shopping||{};
+  for(const k in s.days){const day=s.days[k];day.meals=Object.assign(emptyMeals(),day.meals||{});}
+  return s;
+}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.recipes)&&s.days)return normalize(s)}catch(e){}return null}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+const emptyMeals=()=>Object.fromEntries(MEALS.map(m=>[m.id,[]]));
+
+let S=load(),isFirst=false;
+if(!S){S=fresh();isFirst=true}
+const ui={view:'today',date:todayK(),rq:'',rcat:'all',hideBought:false,modal:null};
+
+const peek=k=>S.days[k]||{meals:emptyMeals(),water:0,mood:null,note:''};
+function day(k){if(!S.days[k])S.days[k]={meals:emptyMeals(),water:0,mood:null,note:''};return S.days[k]}
+const recipe=id=>S.recipes.find(r=>r.id===id);
+function info(e){
+  const b=e.quick||recipe(e.recipeId)||{name:'Рецепт удалён',emoji:'❔',kcal:0,p:0,f:0,c:0};
+  const k=e.servings;
+  return{name:b.name,emoji:b.emoji||'🍽️',portion:b.portion||'',kcal:b.kcal*k,p:b.p*k,f:b.f*k,c:b.c*k,rid:e.recipeId&&recipe(e.recipeId)?e.recipeId:null};
+}
+function sumOf(list,onlyDone){const t={kcal:0,p:0,f:0,c:0,n:0};for(const e of list){if(onlyDone&&!e.done)continue;const i=info(e);t.kcal+=i.kcal;t.p+=i.p;t.f+=i.f;t.c+=i.c;t.n++}return t}
+const allEntries=meals=>MEALS.flatMap(m=>meals[m.id]||[]);
+const dayTotal=(k,onlyDone)=>sumOf(allEntries(peek(k).meals),onlyDone);
+const isEmpty=k=>dayTotal(k).n===0;
+const cloneMeals=m=>{const o=emptyMeals();for(const id in o)o[id]=(m[id]||[]).map(e=>({...e,id:uid(),done:false,quick:e.quick?{...e.quick}:undefined}));return o};
+const newEntry=(rid,servings=1)=>({id:uid(),recipeId:rid,servings,done:false});
+function kcalState(v,goal){if(!v)return'';if(v>goal*1.1)return'over';if(v<goal*.9)return'under';return'ok'}
+
+// Автоподбор: каждый следующий приём пищи добирает остаток нормы
+function autoPlan(k){
+  const d=day(k);let left=S.settings.goals.kcal,shares=1;
+  for(const m of MEALS){
+    const target=left*m.share/shares;shares-=m.share;
+    const opts=[];
+    for(const r of S.recipes)if(m.cats.includes(r.cat)&&r.kcal>0)for(const s of [1,1.5,2])opts.push({r,s,d:Math.abs(r.kcal*s-target)});
+    if(!opts.length){d.meals[m.id]=[];continue}
+    opts.sort((a,b)=>a.d-b.d);
+    const top=opts.slice(0,4),pick=top[Math.floor(Math.random()*top.length)];
+    d.meals[m.id]=[newEntry(pick.r.id,pick.s)];
+    left-=pick.r.kcal*pick.s;
+  }
+}
+if(isFirst){
+  autoPlan(ui.date);
+  const d=S.days[ui.date];d.water=2;
+  S.templates.push({id:uid(),name:'Мой обычный день',meals:cloneMeals(d.meals)});
+  const now=new Date().getHours()*60+new Date().getMinutes();
+  for(const m of MEALS)if(toMin(S.settings.times[m.id])<now)d.meals[m.id].forEach(e=>e.done=true);
+  save();
+}
+
+/* ===== Общий рендер ===== */
+function render(){
+  const t=S.settings.theme;
+  if(t==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.dataset.theme=t;
+  const tIcon=ic(t==='dark'?'moon':t==='light'?'sun':'auto'),tName={auto:'Тема: системная',light:'Тема: светлая',dark:'Тема: тёмная'}[t];
+  $('#themeBtnSide').innerHTML=tIcon+tName;$('#themeBtnTop').innerHTML=tIcon;$('#themeBtnTop').title=tName;
+  const nav=VIEWS.map(v=>`<button data-act="go" data-v="${v.id}" ${ui.view===v.id?'aria-current="page"':''}>${ic(v.icon,20)}<span>${v.name}</span></button>`).join('');
+  $('#sideNav').innerHTML=nav;$('#tabbar').innerHTML=nav;
+  const g=S.settings.goals,tt=dayTotal(todayK());
+  $('#miniGoal').innerHTML=`<div class="row"><span>Сегодня</span><span class="num">${r0(tt.kcal)} / ${g.kcal}</span></div><div class="track" style="margin-top:8px"><span style="width:${Math.min(100,tt.kcal/g.kcal*100)}%;background:var(--primary)"></span></div>`;
+  $('#main').innerHTML={today:vToday,week:vWeek,recipes:vRecipes,shop:vShop,profile:vProfile}[ui.view]();
+  if(ui.view==='recipes')renderRecipeGrid();
+  renderModal();
+}
+const macros=o=>`<span class="mac"><i class="bg-p"></i>Б ${r0(o.p)}</span><span class="mac"><i class="bg-f"></i>Ж ${r0(o.f)}</span><span class="mac"><i class="bg-c"></i>У ${r0(o.c)}</span>`;
+
+/* ===== Сегодня ===== */
+function nextMeal(){
+  const now=new Date(),mins=now.getHours()*60+now.getMinutes();
+  return MEALS.map(m=>({m,t:toMin(S.settings.times[m.id])})).sort((a,b)=>a.t-b.t).find(x=>x.t>mins);
+}
+function vToday(){
+  const k=ui.date,d=peek(k),g=S.settings.goals,t=dayTotal(k),te=dayTotal(k,true),tk=todayK(),isToday=k===tk;
+  const h=new Date().getHours();
+  const hello=isToday?(h<5?'Доброй ночи 🌙':h<12?'Доброе утро ☀️':h<18?'Добрый день 🌤️':'Добрый вечер 🌆'):(k<tk?'Прошедший день':'Планирование');
+  const strip=weekOf(k).map(w=>{const s=kcalState(dayTotal(w).kcal,g.kcal);
+    return `<button class="sday ${w===tk?'is-today':''}" data-act="date" data-k="${w}" ${w===k?'aria-current="date"':''} aria-label="${df(w,{weekday:'long',day:'numeric',month:'long'})}"><small>${df(w,{weekday:'short'})}</small><b>${parse(w).getDate()}</b><span class="pip ${s==='under'?'part':s}"></span></button>`}).join('');
+  let banner='';
+  if(isToday){const nm=nextMeal();
+    if(nm){const diff=nm.t-(new Date().getHours()*60+new Date().getMinutes());const list=d.meals[nm.m.id]||[];
+      banner=`<div class="card next"><span class="ico" aria-hidden="true">${nm.m.icon}</span><div>Следующий приём пищи — <b>${nm.m.name.toLowerCase()} в ${S.settings.times[nm.m.id]}</b>, через ${diff>=60?Math.floor(diff/60)+' ч ':''}${diff%60} мин.<div class="muted small">${list.length?list.map(e=>esc(info(e).name)).join(', '):'Пока ничего не запланировано'}</div></div></div>`}
+    else banner=`<div class="card next"><span class="ico" aria-hidden="true">🌙</span><div><b>На сегодня приёмы пищи закончились.</b><div class="muted small">Самое время спланировать завтрашний день.</div></div><button class="btn sm soft" data-act="shiftDay" data-n="1" style="margin-left:auto">Завтра ${ic('right',14)}</button></div>`}
+  const nm=isToday&&nextMeal();
+  const tl=MEALS.map(m=>{
+    const list=d.meals[m.id]||[],s=sumOf(list),allDone=list.length&&list.every(e=>e.done);
+    return `<div class="tl ${allDone?'done':''} ${nm&&nm.m.id===m.id?'is-next':''}">
+      <div class="tl-time num">${S.settings.times[m.id]}</div>
+      <section class="card meal">
+        <div class="meal-h"><div class="meal-ico" aria-hidden="true">${m.icon}</div>
+          <div class="t"><h2>${m.name}</h2><div class="sub num">${list.length?`${r0(s.kcal)} ккал`:'—'} · ориентир ${Math.round(g.kcal*m.share)}</div></div>
+          <button class="btn sm soft" data-act="pickOpen" data-m="${m.id}">${ic('plus',15)}Блюдо</button></div>
+        ${list.length?`<ul class="items">${list.map(e=>itemHtml(e,m.id)).join('')}</ul>`:`<button class="meal-empty" data-act="pickOpen" data-m="${m.id}">Добавьте блюдо на ${m.name.toLowerCase()}</button>`}
+      </section></div>`}).join('');
+  const R=55,C=2*Math.PI*R,over=t.kcal>g.kcal,rest=g.kcal-t.kcal;
+  const bar=(n,v,goal,c)=>`<div class="bar"><div class="lbl"><span>${n}</span><span class="num">${r0(v)} / ${goal} г</span></div><div class="track"><span style="width:${Math.min(100,goal?v/goal*100:0)}%;background:var(${c})"></span></div></div>`;
+  return `
+  <div class="head">
+    <div><div class="eyebrow">${hello}</div>
+      <div class="datenav">
+        <button class="icon-btn" data-act="shiftDay" data-n="-1" aria-label="Предыдущий день">${ic('left')}</button>
+        <h1>${cap(df(k,{weekday:'long',day:'numeric',month:'long'}))}</h1>
+        <button class="icon-btn" data-act="shiftDay" data-n="1" aria-label="Следующий день">${ic('right')}</button>
+        ${isToday?'':`<button class="btn sm ghost" data-act="toToday">К сегодня</button>`}
+      </div></div>
+    <div class="actions tight">
+      <button class="btn primary" data-act="auto">${ic('magic')}Подобрать меню</button>
+      <button class="btn" data-act="tplOpen">${ic('layers')}Шаблоны</button>
+      <button class="icon-btn" data-act="clearDay" aria-label="Очистить день" title="Очистить день">${ic('trash')}</button>
+    </div>
+  </div>
+  <div class="strip">${strip}</div>
+  ${banner}
+  <div class="today-grid">
+    <div class="timeline">${tl}</div>
+    <aside class="aside">
+      <section class="card sum">
+        <div class="ring-row">
+          <div class="ring"><svg width="130" height="130" viewBox="0 0 130 130"><circle cx="65" cy="65" r="${R}" fill="none" stroke="var(--surface-2)" stroke-width="13"/><circle cx="65" cy="65" r="${R}" fill="none" stroke="var(--primary)" stroke-width="13" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-Math.min(1,t.kcal/g.kcal))}" style="transition:stroke-dashoffset .45s"/></svg>
+            <div class="c"><b class="num">${r0(t.kcal)}</b><span class="num">из ${g.kcal} ккал</span></div></div>
+          <div><h2>Итог дня</h2><div class="status ${over?'over':''} num" style="margin-top:6px">${over?`На ${r0(-rest)} ккал больше нормы`:`Ещё ${r0(rest)} ккал до нормы`}</div><div class="muted small" style="margin-top:4px;font-weight:700">${t.n} ${plural(t.n,'блюдо','блюда','блюд')} в плане</div></div>
+        </div>
+        <div class="bars">${bar('Белки',t.p,g.p,'--prot')}${bar('Жиры',t.f,g.f,'--fat')}${bar('Углеводы',t.c,g.c,'--carb')}</div>
+        <div class="eaten"><span>✓ Съедено</span><span class="num">${r0(te.kcal)} ккал · ${te.n} из ${t.n}</span></div>
+      </section>
+      <section class="card box">
+        <div class="box-h"><h2>💧 Вода</h2><span class="muted small num" style="font-weight:800">${dec(d.water*.25)} / ${dec(g.water*.25)} л</span></div>
+        <div class="cups">${Array.from({length:g.water},(_,i)=>`<button class="cup ${i<d.water?'on':''}" data-act="water" data-n="${i+1}" aria-label="${i+1} ${plural(i+1,'стакан','стакана','стаканов')}"></button>`).join('')}</div>
+      </section>
+      <section class="card box">
+        <div class="box-h"><h2>Самочувствие</h2><span class="muted small" style="font-weight:800">${d.mood?MOOD_TXT[d.mood-1]:''}</span></div>
+        <div class="moods">${MOODS.map((e,i)=>`<button class="mood" data-act="mood" data-n="${i+1}" aria-pressed="${d.mood===i+1}" aria-label="${MOOD_TXT[i]}">${e}</button>`).join('')}</div>
+        <textarea class="input" id="note" placeholder="Как прошёл день? Что хочется на завтра?" aria-label="Заметка">${esc(d.note)}</textarea>
+      </section>
+    </aside>
+  </div>`;
+}
+function itemHtml(e,m){
+  const i=info(e);
+  return `<li class="item ${e.done?'done':''}">
+    <button class="tick" data-act="done" data-m="${m}" data-id="${e.id}" aria-pressed="${!!e.done}" aria-label="${e.done?'Снять отметку':'Отметить как съеденное'}">${ic('check',15)}</button>
+    <button class="it-emo" ${i.rid?`data-act="recipeOpen" data-id="${i.rid}" aria-label="Открыть рецепт"`:'tabindex="-1" aria-hidden="true"'}>${i.emoji}</button>
+    <div class="it-body"><div class="it-name">${esc(i.name)}</div><div class="it-meta">${i.portion?`<span>${esc(i.portion)}${e.servings!==1?' × '+dec(e.servings):''}</span>`:''}${macros(i)}</div></div>
+    <div class="step"><button data-act="serv" data-m="${m}" data-id="${e.id}" data-n="-0.5" aria-label="Меньше порций">−</button><span class="num">${dec(e.servings)}</span><button data-act="serv" data-m="${m}" data-id="${e.id}" data-n="0.5" aria-label="Больше порций">+</button></div>
+    <div class="it-kcal num">${r0(i.kcal)} <small>ккал</small></div>
+    <button class="x-btn" data-act="rmEntry" data-m="${m}" data-id="${e.id}" aria-label="Удалить">${ic('x',16)}</button>
+  </li>`;
+}
+
+/* ===== Неделя ===== */
+function vWeek(){
+  const ks=weekOf(ui.date),g=S.settings.goals,tk=todayK();
+  const head=ks.map(k=>`<th><button class="dayh ${k===tk?'is-today':''}" data-act="openDay" data-k="${k}"><small>${df(k,{weekday:'short'})}</small><b>${parse(k).getDate()} ${df(k,{month:'short'}).replace('.','')}</b></button></th>`).join('');
+  const rows=MEALS.map(m=>`<tr><th class="rowh"><b>${m.icon} ${m.name}</b><span>${S.settings.times[m.id]}</span></th>${ks.map(k=>{
+    const list=peek(k).meals[m.id]||[];
+    return `<td class="cell" data-drop="${k}|${m.id}">${list.map(e=>{const i=info(e);return `<div class="dchip" draggable="true" data-drag="${k}|${m.id}|${e.id}" title="${esc(i.name)} — ${r0(i.kcal)} ккал"><span>${i.emoji}</span><span class="n">${esc(i.name)}</span><span class="k num">${r0(i.kcal)}</span></div>`}).join('')}
+      <button class="cell-add" data-act="pickOpen" data-m="${m.id}" data-k="${k}" aria-label="Добавить: ${m.name}, ${df(k,{weekday:'long'})}">+</button></td>`}).join('')}</tr>`).join('');
+  const foot=ks.map(k=>{const t=dayTotal(k);const s=kcalState(t.kcal,g.kcal);return `<td><div class="tot ${s} num">${t.n?r0(t.kcal)+' ккал':'—'}<small>${t.n?`Б ${r0(t.p)} · Ж ${r0(t.f)} · У ${r0(t.c)}`:'не заполнено'}</small></div></td>`}).join('');
+  const filled=ks.filter(k=>!isEmpty(k)),avg=filled.length?filled.reduce((s,k)=>s+dayTotal(k).kcal,0)/filled.length:0;
+  return `
+  <div class="head">
+    <div><div class="eyebrow">План на неделю · ${filled.length} из 7 дней</div>
+      <div class="datenav">
+        <button class="icon-btn" data-act="shiftDay" data-n="-7" aria-label="Предыдущая неделя">${ic('left')}</button>
+        <h1>${df(ks[0],{day:'numeric',month:'short'})} — ${df(ks[6],{day:'numeric',month:'short'})}</h1>
+        <button class="icon-btn" data-act="shiftDay" data-n="7" aria-label="Следующая неделя">${ic('right')}</button>
+      </div></div>
+    <div class="actions">
+      <button class="btn primary" data-act="fillWeek">${ic('magic')}Заполнить пустые дни</button>
+      <button class="btn" data-act="copyWeek">${ic('copy')}На следующую неделю</button>
+      <button class="icon-btn" data-act="clearWeek" aria-label="Очистить неделю" title="Очистить неделю">${ic('trash')}</button>
+    </div>
+  </div>
+  <div class="table-wrap"><table class="plan">
+    <thead><tr><th class="rowh"><span>Средняя<br><b class="num">${r0(avg)} ккал</b></span></th>${head}</tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr><th class="rowh"><b>Итого</b><span>норма ${g.kcal}</span></th>${foot}</tr></tfoot>
+  </table></div>
+  <div class="legend"><span>🖱️ Перетаскивайте блюда между ячейками, с <b>Ctrl</b> — копирование</span><span style="color:var(--green)">● в норме ±10%</span><span style="color:var(--fat)">● недобор</span><span style="color:var(--primary)">● перебор</span></div>`;
+}
+
+/* ===== Рецепты ===== */
+function vRecipes(){
+  const favN=S.recipes.filter(r=>r.fav).length;
+  return `
+  <div class="head">
+    <div><div class="eyebrow">${S.recipes.length} ${plural(S.recipes.length,'рецепт','рецепта','рецептов')}</div><h1 style="margin-top:6px">Рецепты</h1></div>
+    <button class="btn primary" data-act="recipeNew">${ic('plus')}Новый рецепт</button>
+  </div>
+  <div class="filters">
+    <div class="search">${ic('search')}<input class="input" id="rq" placeholder="Блюдо или продукт…" value="${esc(ui.rq)}" aria-label="Поиск рецептов"></div>
+    <div class="pills" id="rcats">${[['all','Все'],['fav','♥ Избранное'+(favN?' '+favN:'')],...Object.entries(CATS)].map(([id,n])=>`<button class="pill" data-act="rcat" data-c="${id}" aria-pressed="${ui.rcat===id}">${n}</button>`).join('')}</div>
+  </div>
+  <div class="rgrid" id="rgrid"></div>`;
+}
+function filterRecipes(q,cat,meal){
+  q=q.trim().toLowerCase();
+  return S.recipes.filter(r=>{
+    if(cat==='fav'&&!r.fav)return false;
+    if(cat==='fit'&&meal&&!MEALS.find(m=>m.id===meal).cats.includes(r.cat))return false;
+    if(CATS[cat]&&r.cat!==cat)return false;
+    return !q||r.name.toLowerCase().includes(q)||r.ingredients.some(i=>i.name.toLowerCase().includes(q));
+  });
+}
+function renderRecipeGrid(){
+  const list=filterRecipes(ui.rq,ui.rcat);
+  $('#rgrid').innerHTML=list.length?list.map(r=>`
+    <article class="card rcard" data-act="recipeOpen" data-id="${r.id}" tabindex="0" role="button" aria-label="${esc(r.name)}">
+      <div class="rcover c-${r.cat}"><span aria-hidden="true">${r.emoji}</span>
+        <button class="fav" data-act="fav" data-id="${r.id}" aria-pressed="${r.fav}" aria-label="${r.fav?'Убрать из избранного':'В избранное'}">${ic('heart',18)}</button></div>
+      <div class="rbody">
+        <span class="tag" style="align-self:flex-start">${CATS[r.cat]}</span>
+        <div class="rname">${esc(r.name)}</div>
+        <div class="rmeta"><span>${ic('clock',13)} ${r.minutes} мин</span><span>${esc(r.portion)}</span></div>
+        <div class="rfoot"><span class="rkcal num">${r0(r.kcal)} <small>ккал</small></span><span style="display:flex;gap:8px">${macros(r)}</span></div>
+      </div>
+    </article>`).join('')
+  :`<div class="card empty" style="grid-column:1/-1"><span class="em">🔍</span>${ui.rcat==='fav'?'В избранном пока пусто. Нажмите ♥ на карточке рецепта.':'Ничего не найдено.'}<br><button class="btn primary" style="margin-top:12px" data-act="recipeNew">${ic('plus')}Создать рецепт</button></div>`;
+}
+
+/* ===== Покупки ===== */
+function shopping(){
+  const wk=monday(ui.date);
+  if(!S.shopping[wk])S.shopping[wk]={checked:{},extra:[]};
+  const st=S.shopping[wk],map=new Map();
+  for(const k of weekOf(ui.date))for(const e of allEntries(peek(k).meals)){
+    const r=e.recipeId&&recipe(e.recipeId);if(!r)continue;
+    for(const i of r.ingredients){const key=i.name.trim().toLowerCase()+'|'+i.unit;
+      if(!map.has(key))map.set(key,{key,name:i.name.trim(),unit:i.unit,dept:DEPTS[i.dept]?i.dept:'o',qty:0,from:new Set()});
+      const it=map.get(key);it.qty+=i.qty*e.servings;it.from.add(r.name)}}
+  return{st,items:[...map.values()].sort((a,b)=>a.name.localeCompare(b.name,'ru'))};
+}
+function qtyStr(q,u){
+  if(u==='г'&&q>=1000)return dec(q/1000)+' кг';
+  if(u==='мл'&&q>=1000)return dec(q/1000)+' л';
+  if(u==='г'||u==='мл')return r0(q)+' '+u;
+  return dec(Math.ceil(q*2)/2)+' '+u;
+}
+function vShop(){
+  const ks=weekOf(ui.date),{st,items}=shopping();
+  const total=items.length+st.extra.length,bought=items.filter(i=>st.checked[i.key]).length+st.extra.filter(x=>x.done).length;
+  const row=(id,on,name,q,from,kind)=>(ui.hideBought&&on)?'':`<div class="prod ${on?'done':''}">
+    <input type="checkbox" id="p-${esc(id)}" data-act="${kind}" data-key="${esc(id)}" ${on?'checked':''}>
+    <label for="p-${esc(id)}"><div class="nm">${esc(name)}</div>${from?`<div class="fr">${esc(from)}</div>`:''}</label>
+    ${q?`<span class="q num">${q}</span>`:''}${kind==='extraChk'?`<button class="x-btn" data-act="extraRm" data-key="${esc(id)}" aria-label="Удалить">${ic('x',16)}</button>`:''}</div>`;
+  const groups=Object.entries(DEPTS).map(([dk,[dn,de]])=>{const list=items.filter(i=>i.dept===dk);if(!list.length)return'';
+    const done=list.filter(i=>st.checked[i.key]).length;const body=list.map(i=>row(i.key,st.checked[i.key],i.name,qtyStr(i.qty,i.unit),'Для: '+[...i.from].join(', '),'shopChk')).join('');
+    return `<section class="card dept"><div class="dept-h"><span style="font-size:22px" aria-hidden="true">${de}</span><h3>${dn}</h3><span class="cnt num">${done}/${list.length}</span></div>${body||'<div class="muted small" style="padding:6px 12px">Всё куплено ✓</div>'}</section>`}).join('');
+  const extra=st.extra.length?`<section class="card dept"><div class="dept-h"><span style="font-size:22px" aria-hidden="true">📝</span><h3>Своё</h3><span class="cnt num">${st.extra.filter(x=>x.done).length}/${st.extra.length}</span></div>${st.extra.map(x=>row(x.id,x.done,x.name,'','','extraChk')).join('')}</section>`:'';
+  return `
+  <div class="head">
+    <div><div class="eyebrow">Список покупок</div>
+      <div class="datenav">
+        <button class="icon-btn" data-act="shiftDay" data-n="-7" aria-label="Предыдущая неделя">${ic('left')}</button>
+        <h1>${df(ks[0],{day:'numeric',month:'short'})} — ${df(ks[6],{day:'numeric',month:'short'})}</h1>
+        <button class="icon-btn" data-act="shiftDay" data-n="7" aria-label="Следующая неделя">${ic('right')}</button>
+      </div></div>
+    <div class="actions">
+      <button class="btn primary" data-act="shopCopy" ${total?'':'disabled'}>${ic('copy')}Скопировать</button>
+      <button class="btn" data-act="hideBought" aria-pressed="${ui.hideBought}">${ic('eye')}${ui.hideBought?'Показать купленное':'Скрыть купленное'}</button>
+    </div>
+  </div>
+  <div class="shop-grid">
+    <div>${items.length?groups:`<div class="card empty"><span class="em">🛒</span>На этой неделе нет блюд из рецептов — список пуст.<br><button class="btn primary" style="margin-top:12px" data-act="go" data-v="week">Открыть план недели</button></div>`}${extra}</div>
+    <aside class="aside">
+      <section class="card panel">
+        <div class="muted small" style="font-weight:800">Куплено</div>
+        <div class="big num">${bought}<span class="muted" style="font-size:20px"> / ${total}</span></div>
+        <div class="track"><span style="width:${total?bought/total*100:0}%;background:var(--green)"></span></div>
+        <form class="add-row" data-form="extra"><input class="input" name="name" maxlength="80" placeholder="Добавить своё…" aria-label="Своя позиция"><button class="btn primary" aria-label="Добавить">${ic('plus')}</button></form>
+        <button class="btn ghost sm" data-act="shopReset" style="align-self:flex-start">Сбросить отметки</button>
+      </section>
+    </aside>
+  </div>`;
+}
+
+/* ===== Профиль ===== */
+function reco(){
+  const p=S.settings.profile;
+  const bmr=10*p.weight+6.25*p.height-5*p.age+(p.sex==='m'?5:-161),tdee=bmr*p.activity;
+  const kcal=Math.round(tdee*{lose:.85,keep:1,gain:1.1}[p.goal]/10)*10;
+  const prot=Math.round(p.weight*(p.goal==='keep'?1.6:1.9)),fat=Math.round(p.weight*.9);
+  return{bmr:r0(bmr),tdee:r0(tdee),kcal,p:prot,f:fat,c:Math.max(0,Math.round((kcal-prot*4-fat*9)/4))};
+}
+function vProfile(){
+  const p=S.settings.profile,g=S.settings.goals,r=reco();
+  const seg=(f,opts,val)=>`<div class="seg" role="group">${opts.map(([v,n])=>`<button type="button" data-act="setSeg" data-f="${f}" data-v="${v}" aria-pressed="${val===v}">${n}</button>`).join('')}</div>`;
+  const inp=(attr,f,l,v,x)=>`<label class="field">${l}<input class="input num" type="number" ${attr}="${f}" value="${v}" ${x}></label>`;
+  return `
+  <div class="head"><div><div class="eyebrow">Настройки</div><h1 style="margin-top:6px">Профиль и нормы</h1></div></div>
+  <div class="pgrid">
+    <section class="card panel">
+      <h2>🧮 Калькулятор нормы</h2>
+      <div class="field">Пол${seg('sex',[['f','Женский'],['m','Мужской']],p.sex)}</div>
+      <div class="fgrid">
+        ${inp('data-prof','age','Возраст, лет',p.age,'min="14" max="100"')}
+        ${inp('data-prof','height','Рост, см',p.height,'min="120" max="230"')}
+        ${inp('data-prof','weight','Вес, кг',p.weight,'min="30" max="250" step="0.1"')}
+        <label class="field">Активность<select class="input" data-prof="activity">${ACTIVITY.map(([v,n])=>`<option value="${v}" ${p.activity==v?'selected':''}>${n}</option>`).join('')}</select></label>
+      </div>
+      <div class="field">Цель${seg('goal',[['lose','Снизить вес'],['keep','Поддерживать'],['gain','Набрать']],p.goal)}</div>
+      <div class="reco">
+        <div><b class="num">${r.kcal}</b><span>ккал в день</span></div><div><b class="num">${r.p} г</b><span>белки</span></div><div><b class="num">${r.f} г</b><span>жиры</span></div>
+        <div><b class="num">${r.c} г</b><span>углеводы</span></div><div><b class="num">${r.bmr}</b><span>базовый обмен</span></div><div><b class="num">${r.tdee}</b><span>расход за день</span></div>
+      </div>
+      <button class="btn primary" data-act="applyReco">${ic('check')}Применить как мои нормы</button>
+      <div class="muted small">Формула Миффлина — Сан Жеора. Это ориентир, а не медицинская рекомендация.</div>
+    </section>
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <section class="card panel">
+        <h2>🎯 Мои нормы на день</h2>
+        <div class="fgrid">
+          ${inp('data-goal','kcal','Калории, ккал',g.kcal,'min="800" max="6000" step="10"')}
+          ${inp('data-goal','water','Вода, стаканов (250 мл)',g.water,'min="1" max="16"')}
+          ${inp('data-goal','p','Белки, г',g.p,'min="0" max="400"')}
+          ${inp('data-goal','f','Жиры, г',g.f,'min="0" max="300"')}
+          ${inp('data-goal','c','Углеводы, г',g.c,'min="0" max="800"')}
+        </div>
+        <div class="muted small" style="font-weight:700">БЖУ дают <b class="num">${r0(g.p*4+g.f*9+g.c*4)}</b> ккал.</div>
+      </section>
+      <section class="card panel">
+        <h2>⏰ Расписание приёмов пищи</h2>
+        <div class="times">${MEALS.map(m=>`<label class="field">${m.icon} ${m.name}<input class="input num" type="time" data-time="${m.id}" value="${S.settings.times[m.id]}"></label>`).join('')}</div>
+      </section>
+      <section class="card panel">
+        <h2>🎨 Оформление</h2>
+        ${seg('theme',[['auto','Системная'],['light','Светлая'],['dark','Тёмная']],S.settings.theme)}
+        <h2 style="margin-top:6px">💾 Данные</h2>
+        <div class="muted small" style="font-weight:600">Всё хранится только в этом браузере. Сохраните файл-копию, чтобы перенести данные на другое устройство.</div>
+        <div class="actions"><button class="btn" data-act="export">${ic('down')}Экспорт</button><button class="btn" data-act="import">${ic('up')}Импорт</button><button class="btn ghost danger" data-act="reset">Сбросить всё</button></div>
+      </section>
+    </div>
+  </div>`;
+}
+
+/* ===== Модальные окна ===== */
+function openModal(m){ui.modal=m;renderModal();setTimeout(()=>{const f=$('#modalRoot [autofocus]');if(f)f.focus()},20)}
+function closeModal(){ui.modal=null;renderModal()}
+const mealName=id=>MEALS.find(m=>m.id===id).name;
+function pickList(){
+  const m=ui.modal,list=filterRecipes(m.q,m.filter,m.meal);
+  return list.length?list.map(r=>`<button class="pick" data-act="pick" data-id="${r.id}">
+    <span class="it-emo" aria-hidden="true">${r.emoji}</span>
+    <div class="it-body"><div class="it-name">${r.fav?'♥ ':''}${esc(r.name)}</div><div class="it-meta"><span>${esc(r.portion)}</span>${macros(r)}</div></div>
+    <span class="it-kcal num">${r0(r.kcal)} <small>ккал</small></span><span class="plus">${ic('plus',16)}</span></button>`).join('')
+  :`<div class="empty"><span class="em">🔍</span>Не нашли? Попробуйте фильтр «Все» или вкладку «Быстро».</div>`;
+}
+const ingRow=i=>`<div class="ing-row">
+  <input class="input" data-i="name" value="${esc(i.name)}" placeholder="Продукт" aria-label="Продукт">
+  <input class="input num" data-i="qty" type="number" min="0" step="any" value="${i.qty??''}" placeholder="0" aria-label="Количество">
+  <input class="input" data-i="unit" value="${esc(i.unit||'г')}" list="units" aria-label="Единица">
+  <select class="input" data-i="dept" aria-label="Отдел">${Object.entries(DEPTS).map(([k,[n]])=>`<option value="${k}" ${i.dept===k?'selected':''}>${n}</option>`).join('')}</select>
+  <button type="button" class="x-btn" data-act="ingRm" aria-label="Удалить ингредиент">${ic('x',16)}</button></div>`;
+function renderModal(){
+  const root=$('#modalRoot'),m=ui.modal;
+  if(!m){root.innerHTML='';return}
+  let h='';
+  if(m.type==='pick'){
+    const meal=MEALS.find(x=>x.id===m.meal);
+    h=`<div class="modal" role="dialog" aria-modal="true" aria-label="Выбор блюда">
+      <div class="m-head"><div><h2>${meal.icon} ${meal.name}</h2><div class="muted small" style="font-weight:700">${cap(df(m.date,{weekday:'long',day:'numeric',month:'long'}))}</div></div><button class="x-btn" data-act="close" aria-label="Закрыть">${ic('x')}</button></div>
+      <div class="m-body">
+        <div class="seg"><button data-act="pickTab" data-v="list" aria-pressed="${m.tab==='list'}">Из рецептов</button><button data-act="pickTab" data-v="quick" aria-pressed="${m.tab==='quick'}">Быстро</button></div>
+        ${m.tab==='list'?`
+          <div class="search">${ic('search')}<input class="input" id="pq" value="${esc(m.q)}" placeholder="Поиск по названию или продукту…" autofocus aria-label="Поиск"></div>
+          <div class="pills">${[['fit','Подходит'],['fav','♥ Избранное'],['all','Все']].map(([v,n])=>`<button class="pill" data-act="pickFilter" data-v="${v}" aria-pressed="${m.filter===v}">${n}</button>`).join('')}</div>
+          <div class="plist" id="plist">${pickList()}</div>`
+        :`<form data-form="quick" style="display:flex;flex-direction:column;gap:12px">
+          <label class="field">Что съели или планируете<input class="input" name="name" required maxlength="80" placeholder="Например, бутерброд с сыром" autofocus></label>
+          <div class="fgrid">
+            <label class="field">Калории, ккал<input class="input" name="kcal" type="number" min="0" required></label>
+            <label class="field">Белки, г<input class="input" name="p" type="number" min="0" step="0.1" value="0"></label>
+            <label class="field">Жиры, г<input class="input" name="f" type="number" min="0" step="0.1" value="0"></label>
+            <label class="field">Углеводы, г<input class="input" name="c" type="number" min="0" step="0.1" value="0"></label>
+          </div>
+          <label style="display:flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" name="keep" style="width:18px;height:18px;accent-color:var(--primary)"> Сохранить в рецепты</label>
+          <button class="btn primary">${ic('plus')}Добавить</button></form>`}
+      </div>
+      <div class="m-foot"><span class="muted small" style="margin-right:auto;font-weight:700">${m.added?`✓ Добавлено: ${m.added}`:'Можно добавить несколько блюд подряд'}</span><button class="btn" data-act="close">Готово</button></div></div>`;
+  }else if(m.type==='recipe'){
+    const r=recipe(m.id);if(!r){ui.modal=null;root.innerHTML='';return}
+    const defMeal=(MEALS.find(x=>x.cats.includes(r.cat))||MEALS[2]).id;
+    h=`<div class="modal" role="dialog" aria-modal="true" aria-label="${esc(r.name)}">
+      <div class="m-head"><span class="tag">${CATS[r.cat]}</span><div style="display:flex;gap:6px">
+        <button class="x-btn" data-act="fav" data-id="${r.id}" aria-label="Избранное" style="color:${r.fav?'var(--primary)':'inherit'}">${ic('heart')}</button>
+        <button class="x-btn" data-act="recipeEdit" data-id="${r.id}" aria-label="Редактировать">${ic('edit')}</button>
+        <button class="x-btn" data-act="close" aria-label="Закрыть">${ic('x')}</button></div></div>
+      <div class="m-body">
+        <div class="r-hero"><div class="rcover c-${r.cat}" aria-hidden="true">${r.emoji}</div><div><h2 style="font-size:20px">${esc(r.name)}</h2><div class="rmeta" style="margin-top:8px"><span>${ic('clock',13)} ${r.minutes} мин</span><span>Порция: ${esc(r.portion)}</span></div></div></div>
+        <div class="kbju"><div><b class="num">${r0(r.kcal)}</b><span>ккал</span></div><div><b class="num" style="color:var(--prot)">${r0(r.p)}</b><span>белки, г</span></div><div><b class="num" style="color:var(--fat)">${r0(r.f)}</b><span>жиры, г</span></div><div><b class="num" style="color:var(--carb)">${r0(r.c)}</b><span>углеводы, г</span></div></div>
+        <h3>Ингредиенты на порцию</h3>
+        ${r.ingredients.length?`<ul class="ing-list">${r.ingredients.map(i=>`<li><span>${DEPTS[i.dept]?DEPTS[i.dept][1]:'🧂'} ${esc(i.name)}</span><span class="num">${dec(i.qty)} ${esc(i.unit)}</span></li>`).join('')}</ul>`:'<div class="muted small">Не указаны</div>'}
+        ${r.steps.length?`<h3>Приготовление</h3><ol class="steps">${r.steps.map(s=>`<li>${esc(s)}</li>`).join('')}</ol>`:''}
+        <form class="to-plan" data-form="toPlan">
+          <label class="field">День<input class="input" type="date" name="date" value="${ui.date}" required></label>
+          <label class="field">Приём пищи<select class="input" name="meal">${MEALS.map(x=>`<option value="${x.id}" ${x.id===defMeal?'selected':''}>${x.name}</option>`).join('')}</select></label>
+          <button class="btn primary">${ic('plus')}В план</button>
+        </form>
+      </div></div>`;
+  }else if(m.type==='edit'){
+    const r=m.r;
+    h=`<form class="modal" role="dialog" aria-modal="true" aria-label="Рецепт" data-form="recipe">
+      <div class="m-head"><h2>${m.isNew?'Новый рецепт':'Редактирование'}</h2><button type="button" class="x-btn" data-act="close" aria-label="Закрыть">${ic('x')}</button></div>
+      <div class="m-body">
+        <div style="display:grid;grid-template-columns:76px 1fr;gap:12px">
+          <label class="field">Эмодзи<input class="input" name="emoji" value="${esc(r.emoji)}" maxlength="4" style="text-align:center;font-size:20px"></label>
+          <label class="field">Название<input class="input" name="name" value="${esc(r.name)}" required maxlength="80" autofocus></label></div>
+        <div class="fgrid">
+          <label class="field">Категория<select class="input" name="cat">${Object.entries(CATS).map(([k,n])=>`<option value="${k}" ${r.cat===k?'selected':''}>${n}</option>`).join('')}</select></label>
+          <label class="field">Время, мин<input class="input" name="minutes" type="number" min="0" value="${r.minutes}"></label>
+          <label class="field">Порция<input class="input" name="portion" value="${esc(r.portion)}" placeholder="300 г"></label>
+          <label class="field">Калории, ккал<input class="input" name="kcal" type="number" min="0" value="${r.kcal}" required></label>
+          <label class="field">Белки, г<input class="input" name="p" type="number" min="0" step="0.1" value="${r.p}"></label>
+          <label class="field">Жиры, г<input class="input" name="f" type="number" min="0" step="0.1" value="${r.f}"></label>
+          <label class="field">Углеводы, г<input class="input" name="c" type="number" min="0" step="0.1" value="${r.c}"></label></div>
+        <div class="field">Ингредиенты на 1 порцию</div>
+        <div id="ings" style="display:flex;flex-direction:column;gap:6px">${r.ingredients.map(ingRow).join('')}</div>
+        <button type="button" class="btn sm" data-act="ingAdd" style="align-self:flex-start">${ic('plus',15)}Ингредиент</button>
+        <label class="field">Шаги приготовления — каждый с новой строки<textarea class="input" name="steps" rows="4">${esc(r.steps.join('\n'))}</textarea></label>
+      </div>
+      <div class="m-foot">${m.isNew?'':`<button type="button" class="btn ghost danger" data-act="recipeDel" data-id="${r.id}" style="margin-right:auto">${ic('trash')}Удалить</button>`}<button type="button" class="btn" data-act="close">Отмена</button><button class="btn primary">${ic('check')}Сохранить</button></div></form>`;
+  }else if(m.type==='tpl'){
+    h=`<div class="modal" role="dialog" aria-modal="true" aria-label="Шаблоны дней">
+      <div class="m-head"><h2>${ic('layers')} Шаблоны дней</h2><button class="x-btn" data-act="close" aria-label="Закрыть">${ic('x')}</button></div>
+      <div class="m-body">
+        <div class="muted small" style="font-weight:600">Сохраните удачное меню и применяйте его к любому дню в один клик.</div>
+        ${S.templates.length?S.templates.map(t=>{const s=sumOf(allEntries(t.meals));return `<div class="tpl"><div class="t"><b>${esc(t.name)}</b><span class="muted small num" style="font-weight:700">${r0(s.kcal)} ккал · ${s.n} ${plural(s.n,'блюдо','блюда','блюд')}</span></div>
+          <button class="btn sm primary" data-act="tplApply" data-id="${t.id}">Применить</button><button class="x-btn" data-act="tplDel" data-id="${t.id}" aria-label="Удалить шаблон">${ic('trash',16)}</button></div>`}).join('')
+          :'<div class="empty"><span class="em">🗂️</span>Шаблонов пока нет</div>'}
+        <form class="add-row" data-form="tplSave" style="margin-top:6px"><input class="input" name="name" maxlength="40" placeholder="Название, например «Рабочий день»" aria-label="Название шаблона" ${isEmpty(ui.date)?'disabled':''}><button class="btn" ${isEmpty(ui.date)?'disabled':''}>Сохранить день</button></form>
+        ${isEmpty(ui.date)?'<div class="muted small">Чтобы сохранить шаблон, сначала добавьте блюда в этот день.</div>':''}
+      </div></div>`;
+  }else if(m.type==='confirm'){
+    h=`<div class="modal sm" role="alertdialog" aria-modal="true" aria-label="${esc(m.title)}">
+      <div class="m-head"><h2>${esc(m.title)}</h2></div>
+      <div class="m-body"><div class="muted" style="font-weight:600">${esc(m.text)}</div></div>
+      <div class="m-foot"><button class="btn" data-act="close" autofocus>Отмена</button><button class="btn primary" data-act="confirmOk">${esc(m.ok)}</button></div></div>`;
+  }
+  root.innerHTML=`<div class="overlay" data-act="overlay">${h}</div>`;
+}
+function ask(title,text,ok,fn){openModal({type:'confirm',title,text,ok,fn})}
+function guard(k,title,text,ok,fn){isEmpty(k)?fn():ask(title,text,ok,fn)}
+
+/* ===== Действия ===== */
+let tT;
+function toast(s){const t=$('#toast');t.textContent=s;t.classList.add('show');clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('show'),2300)}
+function commit(){save();render()}
+const entryOf=(m,id)=>(day(ui.date).meals[m]||[]).find(e=>e.id===id);
+function copyText(t){
+  const fb=()=>{const a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;opacity:0';document.body.appendChild(a);a.select();try{document.execCommand('copy')}catch(e){}a.remove()};
+  return navigator.clipboard&&window.isSecureContext?navigator.clipboard.writeText(t).catch(fb):Promise.resolve(fb());
+}
+const A={
+  go:el=>{ui.view=el.dataset.v;render();scrollTo({top:0})},
+  theme:()=>{const o=['auto','light','dark'];S.settings.theme=o[(o.indexOf(S.settings.theme)+1)%3];commit()},
+  date:el=>{ui.date=el.dataset.k;render()},
+  shiftDay:el=>{ui.date=shift(ui.date,+el.dataset.n);render()},
+  toToday:()=>{ui.date=todayK();render()},
+  openDay:el=>{ui.date=el.dataset.k;ui.view='today';render();scrollTo({top:0})},
+  pickOpen:el=>{if(el.dataset.k)ui.date=el.dataset.k;openModal({type:'pick',date:ui.date,meal:el.dataset.m,tab:'list',q:'',filter:'fit',added:0})},
+  pickTab:el=>{ui.modal.tab=el.dataset.v;renderModal();const f=$('#modalRoot [autofocus]');if(f)f.focus()},
+  pickFilter:el=>{ui.modal.filter=el.dataset.v;$$('#modalRoot .pill').forEach(p=>p.setAttribute('aria-pressed',p.dataset.v===ui.modal.filter));$('#plist').innerHTML=pickList()},
+  pick:el=>{const r=recipe(el.dataset.id);day(ui.modal.date).meals[ui.modal.meal].push(newEntry(r.id));ui.modal.added++;save();render();toast('Добавлено: '+r.name)},
+  done:el=>{const e=entryOf(el.dataset.m,el.dataset.id);if(e){e.done=!e.done;commit()}},
+  serv:el=>{const e=entryOf(el.dataset.m,el.dataset.id);if(e){e.servings=Math.min(10,Math.max(.5,e.servings+ +el.dataset.n));commit()}},
+  rmEntry:el=>{const l=day(ui.date).meals[el.dataset.m],i=l.findIndex(e=>e.id===el.dataset.id);if(i<0)return;const[e]=l.splice(i,1);commit();toast('Убрано: '+info(e).name)},
+  water:el=>{const d=day(ui.date),n=+el.dataset.n;d.water=d.water===n?n-1:n;commit()},
+  mood:el=>{const d=day(ui.date),n=+el.dataset.n;d.mood=d.mood===n?null:n;commit()},
+  auto:()=>guard(ui.date,'Подобрать новое меню?','Текущий план на этот день будет заменён.','Подобрать',()=>{autoPlan(ui.date);commit();toast('Меню подобрано под вашу норму ✨')}),
+  clearDay:()=>{if(isEmpty(ui.date))return toast('День и так пуст');ask('Очистить день?','Все блюда этого дня будут удалены.','Очистить',()=>{day(ui.date).meals=emptyMeals();commit();toast('День очищен')})},
+  tplOpen:()=>openModal({type:'tpl'}),
+  tplApply:el=>{const t=S.templates.find(x=>x.id===el.dataset.id);const run=()=>{day(ui.date).meals=cloneMeals(t.meals);ui.modal=null;commit();toast('Шаблон «'+t.name+'» применён')};
+    isEmpty(ui.date)?run():ask('Применить шаблон?','Текущий план на этот день будет заменён шаблоном «'+t.name+'».','Применить',run)},
+  tplDel:el=>{S.templates=S.templates.filter(x=>x.id!==el.dataset.id);save();renderModal();toast('Шаблон удалён')},
+  fillWeek:()=>{const e=weekOf(ui.date).filter(isEmpty);if(!e.length)return toast('Все дни недели уже заполнены');e.forEach(autoPlan);commit();toast(`Заполнено ${e.length} ${plural(e.length,'день','дня','дней')}`)},
+  copyWeek:()=>{const ks=weekOf(ui.date);if(ks.every(isEmpty))return toast('Эта неделя пока пуста');
+    const run=()=>{ks.forEach(k=>{if(!isEmpty(k))day(shift(k,7)).meals=cloneMeals(peek(k).meals)});ui.date=shift(ui.date,7);commit();toast('Неделя скопирована на следующую')};
+    ks.map(k=>shift(k,7)).every(isEmpty)?run():ask('Перезаписать следующую неделю?','Заполненные дни следующей недели будут заменены.','Скопировать',run)},
+  clearWeek:()=>{const ks=weekOf(ui.date);if(ks.every(isEmpty))return toast('Неделя и так пуста');ask('Очистить неделю?','Все блюда с понедельника по воскресенье будут удалены.','Очистить',()=>{ks.forEach(k=>{if(S.days[k])S.days[k].meals=emptyMeals()});commit();toast('Неделя очищена')})},
+  rcat:el=>{ui.rcat=el.dataset.c;$$('#rcats .pill').forEach(p=>p.setAttribute('aria-pressed',p.dataset.c===ui.rcat));renderRecipeGrid()},
+  fav:el=>{const r=recipe(el.dataset.id);r.fav=!r.fav;save();if(ui.view==='recipes'){$('#main').innerHTML=vRecipes();renderRecipeGrid()}renderModal();toast(r.fav?'Добавлено в избранное ♥':'Убрано из избранного')},
+  recipeOpen:el=>openModal({type:'recipe',id:el.dataset.id}),
+  recipeNew:()=>openModal({type:'edit',isNew:true,r:{emoji:'🍽️',name:'',cat:CATS[ui.rcat]?ui.rcat:'main',minutes:20,portion:'',kcal:'',p:'',f:'',c:'',ingredients:[{name:'',qty:'',unit:'г',dept:'v'}],steps:[]}}),
+  recipeEdit:el=>{const r=recipe(el.dataset.id);openModal({type:'edit',isNew:false,r:{...r,ingredients:r.ingredients.map(i=>({...i})),steps:[...r.steps]}})},
+  recipeDel:el=>{const r=recipe(el.dataset.id);let used=0;for(const k in S.days)used+=allEntries(S.days[k].meals).filter(e=>e.recipeId===r.id).length;
+    ask('Удалить «'+r.name+'»?',used?`Рецепт стоит в планах (${used} раз) — оттуда он тоже исчезнет.`:'Рецепт будет удалён без возможности восстановления.','Удалить',()=>{
+      S.recipes=S.recipes.filter(x=>x.id!==r.id);
+      for(const k in S.days)for(const m of MEALS)S.days[k].meals[m.id]=S.days[k].meals[m.id].filter(e=>e.recipeId!==r.id);
+      for(const t of S.templates)for(const m of MEALS)t.meals[m.id]=(t.meals[m.id]||[]).filter(e=>e.recipeId!==r.id);
+      commit();toast('Рецепт удалён')})},
+  ingAdd:()=>{$('#ings').insertAdjacentHTML('beforeend',ingRow({name:'',qty:'',unit:'г',dept:'v'}));$('#ings .ing-row:last-child input').focus()},
+  ingRm:el=>el.closest('.ing-row').remove(),
+  shopChk:el=>{const{st}=shopping();if(el.checked)st.checked[el.dataset.key]=true;else delete st.checked[el.dataset.key];commit()},
+  extraChk:el=>{const{st}=shopping(),x=st.extra.find(x=>x.id===el.dataset.key);if(x){x.done=el.checked;commit()}},
+  extraRm:el=>{const{st}=shopping();st.extra=st.extra.filter(x=>x.id!==el.dataset.key);commit()},
+  shopReset:()=>{const{st}=shopping();st.checked={};st.extra.forEach(x=>x.done=false);commit();toast('Отметки сброшены')},
+  hideBought:()=>{ui.hideBought=!ui.hideBought;render()},
+  shopCopy:()=>{const{st,items}=shopping(),ks=weekOf(ui.date);
+    const parts=Object.entries(DEPTS).map(([dk,[dn,de]])=>{const l=items.filter(i=>i.dept===dk&&!st.checked[i.key]);return l.length?`${de} ${dn}\n`+l.map(i=>`☐ ${i.name} — ${qtyStr(i.qty,i.unit)}`).join('\n'):''}).filter(Boolean);
+    const ex=st.extra.filter(x=>!x.done);if(ex.length)parts.push('📝 Своё\n'+ex.map(x=>'☐ '+x.name).join('\n'));
+    copyText(`🛒 Покупки на ${df(ks[0],{day:'numeric',month:'short'})} — ${df(ks[6],{day:'numeric',month:'short'})}\n\n`+parts.join('\n\n')).then(()=>toast('Список скопирован — вставьте в мессенджер'))},
+  setSeg:el=>{const f=el.dataset.f,v=el.dataset.v;if(f==='theme')S.settings.theme=v;else S.settings.profile[f]=v;commit()},
+  applyReco:()=>{const r=reco();Object.assign(S.settings.goals,{kcal:r.kcal,p:r.p,f:r.f,c:r.c});commit();toast('Нормы обновлены 🎯')},
+  export:()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:'application/json'}));a.download=`racion-${todayK()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Файл с данными сохранён')},
+  import:()=>$('#fileIn').click(),
+  reset:()=>ask('Сбросить все данные?','Планы, свои рецепты, шаблоны и настройки будут удалены без возможности восстановления.','Сбросить',()=>{S=fresh();ui.date=todayK();commit();toast('Данные сброшены')}),
+  close:()=>closeModal(),
+  overlay:(el,ev)=>{if(ev.target===el)closeModal()},
+  confirmOk:()=>{const fn=ui.modal.fn;closeModal();fn()}
+};
+
+/* ===== События ===== */
+document.addEventListener('click',ev=>{
+  const el=ev.target.closest('[data-act]');if(!el)return;
+  if(el.matches('input[type=checkbox]'))return;
+  const fn=A[el.dataset.act];if(fn)fn(el,ev);
+});
+document.addEventListener('change',ev=>{
+  const el=ev.target;
+  if(el.matches('input[type=checkbox][data-act]'))return A[el.dataset.act](el);
+  if(el.dataset.prof){const v=+el.value;if(el.value!==''&&!isNaN(v)){S.settings.profile[el.dataset.prof]=v;commit()}}
+  if(el.dataset.goal){let v=Math.round(+el.value);if(el.value===''||isNaN(v))return render();S.settings.goals[el.dataset.goal]=Math.max(+el.min,Math.min(+el.max,v));commit()}
+  if(el.dataset.time&&el.value){S.settings.times[el.dataset.time]=el.value;save();toast('Расписание обновлено')}
+});
+document.addEventListener('input',ev=>{
+  const el=ev.target;
+  if(el.id==='note'){day(ui.date).note=el.value;save()}
+  if(el.id==='rq'){ui.rq=el.value;renderRecipeGrid()}
+  if(el.id==='pq'){ui.modal.q=el.value;$('#plist').innerHTML=pickList()}
+});
+document.addEventListener('keydown',ev=>{
+  if(ev.key==='Escape'&&ui.modal)return closeModal();
+  if((ev.key==='Enter'||ev.key===' ')&&ev.target.matches('.rcard')){ev.preventDefault();A.recipeOpen(ev.target)}
+  if(ev.key==='Enter'&&ev.target.id==='pq'){const b=$('#plist .pick');if(b)b.click()}
+});
+document.addEventListener('submit',ev=>{
+  ev.preventDefault();
+  const f=ev.target,fd=new FormData(f),num=k=>Math.max(0,+(fd.get(k)||0)),str=k=>String(fd.get(k)||'').trim();
+  switch(f.dataset.form){
+    case'extra':{const n=str('name');if(!n)return;shopping().st.extra.push({id:uid(),name:n,done:false});commit();const i=$('[data-form=extra] input');if(i)i.focus();break}
+    case'quick':{const n=str('name');if(!n)return;const base={name:n,emoji:'🍽️',kcal:num('kcal'),p:num('p'),f:num('f'),c:num('c')};
+      const meal=ui.modal.meal,cat=MEALS.find(m=>m.id===meal).cats[0];let e;
+      if(fd.get('keep')){const r={id:uid(),...base,cat,minutes:0,portion:'1 порция',fav:false,ingredients:[],steps:[]};S.recipes.push(r);e=newEntry(r.id)}else e={id:uid(),quick:base,servings:1,done:false};
+      day(ui.modal.date).meals[meal].push(e);ui.modal.added++;save();render();toast('Добавлено: '+n);break}
+    case'toPlan':{const r=recipe(ui.modal.id),k=str('date'),meal=str('meal');if(!k)return;day(k).meals[meal].push(newEntry(r.id));ui.modal=null;commit();
+      toast(`«${r.name}» → ${mealName(meal)}, ${df(k,{day:'numeric',month:'short'})}`);break}
+    case'tplSave':{const n=str('name')||'Шаблон '+(S.templates.length+1);S.templates.push({id:uid(),name:n,meals:cloneMeals(peek(ui.date).meals)});save();renderModal();toast('Шаблон «'+n+'» сохранён');break}
+    case'recipe':{
+      const ings=[...f.querySelectorAll('.ing-row')].map(r=>({name:r.querySelector('[data-i=name]').value.trim(),qty:+r.querySelector('[data-i=qty]').value||0,unit:r.querySelector('[data-i=unit]').value.trim()||'шт',dept:r.querySelector('[data-i=dept]').value})).filter(i=>i.name&&i.qty>0);
+      const data={name:str('name'),emoji:str('emoji')||'🍽️',cat:str('cat'),minutes:num('minutes'),portion:str('portion'),kcal:num('kcal'),p:num('p'),f:num('f'),c:num('c'),ingredients:ings,
+        steps:String(fd.get('steps')||'').split('\n').map(s=>s.trim()).filter(Boolean)};
+      if(!data.name)return;const isNew=ui.modal.isNew;let id;
+      if(isNew){id=uid();S.recipes.unshift({id,fav:false,...data})}else{id=ui.modal.r.id;Object.assign(recipe(id),data)}
+      ui.modal={type:'recipe',id};commit();toast(isNew?'Рецепт добавлен':'Изменения сохранены');break}
+  }
+});
+/* Перетаскивание в недельном плане */
+document.addEventListener('dragstart',ev=>{const c=ev.target.closest&&ev.target.closest('[data-drag]');if(!c)return;ev.dataTransfer.setData('text/plain',c.dataset.drag);ev.dataTransfer.effectAllowed='copyMove';c.classList.add('dragging')});
+document.addEventListener('dragend',ev=>{$$('.dragging').forEach(x=>x.classList.remove('dragging'));$$('.cell.drop').forEach(x=>x.classList.remove('drop'))});
+document.addEventListener('dragover',ev=>{const c=ev.target.closest&&ev.target.closest('[data-drop]');if(!c)return;ev.preventDefault();ev.dataTransfer.dropEffect=ev.ctrlKey?'copy':'move';c.classList.add('drop')});
+document.addEventListener('dragleave',ev=>{const c=ev.target.closest&&ev.target.closest('[data-drop]');if(c&&!c.contains(ev.relatedTarget))c.classList.remove('drop')});
+document.addEventListener('drop',ev=>{
+  const c=ev.target.closest&&ev.target.closest('[data-drop]');if(!c)return;ev.preventDefault();
+  const src=ev.dataTransfer.getData('text/plain').split('|');if(src.length!==3)return;
+  const[fk,fm,id]=src,[tk,tm]=c.dataset.drop.split('|');const copy=ev.ctrlKey;
+  if(!copy&&fk===tk&&fm===tm)return render();
+  const list=day(fk).meals[fm],i=list.findIndex(e=>e.id===id);if(i<0)return;
+  const e=copy?{...list[i],id:uid(),done:false}:list.splice(i,1)[0];
+  day(tk).meals[tm].push(e);commit();toast(`${copy?'Скопировано':'Перенесено'}: ${info(e).name} → ${mealName(tm)}, ${df(tk,{weekday:'short'})}`);
+});
+$('#fileIn').addEventListener('change',ev=>{
+  const file=ev.target.files[0];if(!file)return;const rd=new FileReader();
+  rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!d||!Array.isArray(d.recipes)||typeof d.days!=='object'||!d.settings)throw 0;S=normalize(d);commit();toast('Данные импортированы')}catch(e){toast('Не удалось прочитать файл')}ev.target.value=''};
+  rd.readAsText(file);
+});
+document.body.insertAdjacentHTML('beforeend','<datalist id="units"><option value="г"><option value="мл"><option value="шт"><option value="ст. л."><option value="ч. л."><option value="пуч"><option value="щеп"></datalist>');
+try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(S.settings.theme==='auto')render()})}catch(e){}
+setInterval(()=>{if(ui.view==='today'&&!ui.modal&&document.activeElement.id!=='note')render()},60000);
+render();
+</script>
+</body>
+</html>
